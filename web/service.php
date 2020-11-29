@@ -23,6 +23,10 @@ $disassemble_script_path = $scripts_path . 'disassemble.sh';
 $get_wasm_jit_script_path = $scripts_path . 'get_wasm_jit.js';
 $run_wasm_script_path = $scripts_path . 'run.js';
 $clean_wast_script_path = $scripts_path . 'clean_wast.js';
+
+$ewab_x86_script_path = $scripts_path . 'ewab-x86.sh';
+$ewab_wat_script_path = $scripts_path . 'ewab-wat.sh';
+
 $timeout_command = 'timeout 10s time';
 
 $input = $_POST["input"];
@@ -104,12 +108,27 @@ if ((strpos($action, "cpp2") === 0) or (strpos($action, "c2") === 0)) {
 
   if (strpos($action, "2x86")) {
     $x86FileName = $result_file_base . '.x86';
-    $output = shell_exec($c_x86_compiler_path . ' ' .
-                         $fileName . ' "' . $safe_options . '"' . ' 2>&1');
+    // $output = shell_exec($c_x86_compiler_path . ' ' .
+    //                      $fileName . ' "' . $safe_options . '"' . ' 2>&1');
+    $output = shell_exec($ewab_x86_script_path . ' ' .
+                        $fileName . ' "' . $safe_options . '"' . ' 2>&1');
     if (!file_exists($x86FileName)) {
       echo $sanitize_shell_output($output);
     } else {
       echo $sanitize_shell_output(file_get_contents($x86FileName));
+    }
+    $cleanup();
+    exit;
+  }
+
+  if (strpos($action, "2wat")) {
+    $watFileName = $result_file_base . '.wat';
+    $output = shell_exec($ewab_wat_script_path . ' ' .
+                        $fileName . ' "' . $safe_options . '"' . ' 2>&1');
+    if (!file_exists($watFileName)) {
+      echo $sanitize_shell_output($output);
+    } else {
+      echo $sanitize_shell_output(file_get_contents($watFileName));
     }
     $cleanup();
     exit;
@@ -182,13 +201,16 @@ if ($action == "wast2assembly" || $action == "wasm2assembly") {
   //      ],
   //      "wasm":"AGFzbQEAAAA...."
   // }
+
+  $fileName = $result_file_base . '.wasm';
   if ($action == "wast2assembly") {
-    $fileName = $result_file_base . '.wast';
-    file_put_contents($fileName, $input);
+    $watFileName = $result_file_base . '.wat';
+    file_put_contents($watFileName, $input);
+    $output = shell_exec('wat2wasm -o ' . $fileName . ' ' . $watFileName);
   } else {
-    $fileName = $result_file_base . '.wasm';
     file_put_contents($fileName, base64_decode($input));
   }
+
   $jit_options = '';
   if (strpos($options, '--wasm-always-baseline') !== false) {
     $jit_options = ' --wasm-always-baseline';
